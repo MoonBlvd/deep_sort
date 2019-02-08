@@ -6,6 +6,7 @@ import os
 
 import cv2
 import numpy as np
+import glob 
 
 from application_util import preprocessing
 from application_util import visualization
@@ -207,12 +208,119 @@ def run(sequence_dir, detection_file, output_file, min_confidence,
     else:
         visualizer = visualization.NoVisualization(seq_info)
     visualizer.run(frame_callback)
+    
 
     # Store results.
     f = open(output_file, 'w')
     for row in results:
         print('%d,%d,%.2f,%.2f,%.2f,%.2f,1,-1,-1,-1' % (
             row[0], row[1], row[2], row[3], row[4], row[5]),file=f)
+
+def run_multiple(sequence_dir, detection_dir, output_dir, min_confidence,
+                nms_max_overlap, min_detection_height, max_cosine_distance,
+                nn_budget, display, save_images_dir):
+    """Run multi-target tracker on a particular sequence.
+
+    Parameters
+    ----------
+    sequence_dir : str
+        Path to the MOTChallenge sequence directory.
+    detection_dir : str
+        Path to the detections file.
+    output_dir : str
+        Path to the tracking output file. This file will contain the tracking
+        results on completion.
+    min_confidence : float
+        Detection confidence threshold. Disregard all detections that have
+        a confidence lower than this value.
+    nms_max_overlap: float
+        Maximum detection overlap (non-maxima suppression threshold).
+    min_detection_height : int
+        Detection height threshold. Disregard all detections that have
+        a height lower than this value.
+    max_cosine_distance : float
+        Gating threshold for cosine distance metric (object appearance).
+    nn_budget : Optional[int]
+        Maximum size of the appearance descriptor gallery. If None, no budget
+        is enforced.
+    display : bool
+        If True, show visualization of intermediate tracking results.
+    save_images_dir : string
+        If not None, save the tracking result to indicated directories
+
+    """
+    all_sequences = sorted(glob.glob(os.path.join(sequence_dir, '*')))
+    if len(all_sequences) == 0:
+        raise ValueError("There is no folder in " + sequence_dir)
+    for sequence_dir in all_sequences:
+        video_name = sequence_dir.split('/')[-1]
+        output_file = os.path.join(output_dir, video_name + '.txt')
+        print(video_name)
+        detection_file = os.path.join(detection_dir, video_name+'.npy')
+        try:
+            os.stat(detection_file)
+            os.stat(sequence_dir)
+        except:
+            raise NameError(detection_file + ' or ' + sequence_dir + " doesn't exist!")
+        seq_info = gather_sequence_info(sequence_dir, detection_file)
+        metric = nn_matching.NearestNeighborDistanceMetric(
+            "cosine", max_cosine_distance, nn_budget)
+        tracker = Tracker(metric)
+        results = []
+
+        def frame_callback(vis, frame_idx):
+            print("Processing frame %05d" % frame_idx)
+
+            # Load image and generate detections.
+            detections = create_detections(
+                seq_info["detections"], frame_idx, min_detection_height)
+            detections = [d for d in detections if d.confidence >= min_confidence]
+
+            # Run non-maxima suppression.
+            boxes = np.array([d.tlwh for d in detections])
+            scores = np.array([d.confidence for d in detections])
+            indices = preprocessing.non_max_suppression(
+                boxes, nms_max_overlap, scores)
+            detections = [detections[i] for i in indices]
+
+            # Update tracker.
+            tracker.predict()
+            tracker.update(detections)
+
+            # Update visualization.
+            if display:
+                image = cv2.imread(
+                    seq_info["image_filenames"][frame_idx], cv2.IMREAD_COLOR)
+                image_name = seq_info["image_filenames"][frame_idx].split('/')[-1]
+                vis.set_image(image.copy(), image_name)
+                # vis.draw_detections(detections)
+                vis.draw_trackers(tracker.tracks)
+
+            # Store results.
+            for track in tracker.tracks:
+                if not track.is_confirmed() or track.time_since_update > 1:
+                    continue
+                bbox = track.to_tlwh()
+                results.append([
+                    frame_idx, track.track_id, bbox[0], bbox[1], bbox[2], bbox[3]])
+
+        # Run tracker.
+        if display:
+            visualizer = visualization.Visualization(seq_info, update_ms=5, save_images_dir=save_images_dir)
+        else:
+            visualizer = visualization.NoVisualization(seq_info)
+        visualizer.run(frame_callback)
+
+        # Store results.
+        f = open(output_file, 'w')
+        for row in results:
+            print('%d,%d,%.2f,%.2f,%.2f,%.2f,1,-1,-1,-1' % (
+                row[0], row[1], row[2], row[3], row[4], row[5]),file=f)
+        f.close()
+        # shutdown the window
+        if display:
+            cv2.destroyWindow(visualizer.viewer._caption)
+        
 
 
 def parse_args():
@@ -223,10 +331,10 @@ def parse_args():
         "--sequence_dir", help="Path to MOTChallenge sequence directory",
         default=None, required=True)
     parser.add_argument(
-        "--detection_file", help="Path to custom detections.", default=None,
+        "--detection_dir", help="Path to custom detections.", default=None,
         required=True)
     parser.add_argument(
-        "--output_file", help="Path to the tracking output file. This file will"
+        "--output_dir", help="Path to the tracking output file. This file will"
         " contain the tracking results on completion.",
         default="/tmp/hypotheses.txt")
     parser.add_argument(
@@ -248,7 +356,7 @@ def parse_args():
         "gallery. If None, no budget is enforced.", type=int, default=None)
     parser.add_argument(
         "--display", help="Show intermediate tracking results",
-        default=True, type=bool)
+        default=False, action='store_true')
     parser.add_argument(
         "--save_images_dir", help="Save tracking results as images",
         default=None, type=str)
@@ -257,7 +365,17 @@ def parse_args():
 
 if __name__ == "__main__":
     args = parse_args()
-    run(
-        args.sequence_dir, args.detection_file, args.output_file,
-        args.min_confidence, args.nms_max_overlap, args.min_detection_height,
-        args.max_cosine_distance, args.nn_budget, args.display, args.save_images_dir)
+
+    if os.path.isdir(args.detection_dir):
+        run_multiple(args.sequence_dir, args.detection_dir, args.output_dir,
+                    args.min_confidence, args.nms_max_overlap, args.min_detection_height,
+                    args.max_cosine_distance, args.nn_budget, args.display, args.save_images_dir)
+    else:
+        try:
+            run(args.sequence_dir, args.detection_dir, args.output_dir,
+                args.min_confidence, args.nms_max_overlap, args.min_detection_height,
+                args.max_cosine_distance, args.nn_budget, args.display, args.save_images_dir)
+        except:
+            raise NameError(args.detection_dir + ' or ' + args.output_dir + ' is unknown!')
+        
+
