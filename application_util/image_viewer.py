@@ -98,7 +98,7 @@ class ImageViewer(object):
 
     """
 
-    def __init__(self, update_ms, window_shape=(640, 480), caption="Figure 1"):
+    def __init__(self, update_ms, window_shape=(640, 480), caption="Figure 1", save_images_dir=None):
         self._window_shape = window_shape
         self._caption = caption
         self._update_ms = update_ms
@@ -110,7 +110,8 @@ class ImageViewer(object):
         self._color = (0, 0, 0)
         self.text_color = (255, 255, 255)
         self.thickness = 1
-
+        self.save_images_dir = save_images_dir
+        self.image_name = ''
     @property
     def color(self):
         return self._color
@@ -310,6 +311,11 @@ class ImageViewer(object):
             remaining_time = max(1, int(self._update_ms - 1e3*(t1-t0)))
             cv2.imshow(
                 self._caption, cv2.resize(self.image, self._window_shape[:2]))
+            # save image 
+            if self.save_images_dir:
+                cv2.imwrite(os.path.join(self.save_images_dir, self.image_name), 
+                            self.image)
+
             key = cv2.waitKey(remaining_time)
             if key & 255 == 27:  # ESC
                 print("terminating")

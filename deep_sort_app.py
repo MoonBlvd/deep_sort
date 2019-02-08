@@ -40,7 +40,7 @@ def gather_sequence_info(sequence_dir, detection_file):
         * max_frame_idx: Index of the last frame.
 
     """
-    image_dir = os.path.join(sequence_dir, "img1")
+    image_dir = os.path.join(sequence_dir,'images')
     image_filenames = {
         int(os.path.splitext(f)[0]): os.path.join(image_dir, f)
         for f in os.listdir(image_dir)}
@@ -128,7 +128,7 @@ def create_detections(detection_mat, frame_idx, min_height=0):
 
 def run(sequence_dir, detection_file, output_file, min_confidence,
         nms_max_overlap, min_detection_height, max_cosine_distance,
-        nn_budget, display):
+        nn_budget, display, save_images_dir):
     """Run multi-target tracker on a particular sequence.
 
     Parameters
@@ -155,6 +155,8 @@ def run(sequence_dir, detection_file, output_file, min_confidence,
         is enforced.
     display : bool
         If True, show visualization of intermediate tracking results.
+    save_images_dir : string
+        If not None, save the tracking result to indicated directories
 
     """
     seq_info = gather_sequence_info(sequence_dir, detection_file)
@@ -186,8 +188,9 @@ def run(sequence_dir, detection_file, output_file, min_confidence,
         if display:
             image = cv2.imread(
                 seq_info["image_filenames"][frame_idx], cv2.IMREAD_COLOR)
-            vis.set_image(image.copy())
-            vis.draw_detections(detections)
+            image_name = seq_info["image_filenames"][frame_idx].split('/')[-1]
+            vis.set_image(image.copy(), image_name)
+            # vis.draw_detections(detections)
             vis.draw_trackers(tracker.tracks)
 
         # Store results.
@@ -200,7 +203,7 @@ def run(sequence_dir, detection_file, output_file, min_confidence,
 
     # Run tracker.
     if display:
-        visualizer = visualization.Visualization(seq_info, update_ms=5)
+        visualizer = visualization.Visualization(seq_info, update_ms=5, save_images_dir=save_images_dir)
     else:
         visualizer = visualization.NoVisualization(seq_info)
     visualizer.run(frame_callback)
@@ -246,6 +249,9 @@ def parse_args():
     parser.add_argument(
         "--display", help="Show intermediate tracking results",
         default=True, type=bool)
+    parser.add_argument(
+        "--save_images_dir", help="Save tracking results as images",
+        default=None, type=str)
     return parser.parse_args()
 
 
@@ -254,4 +260,4 @@ if __name__ == "__main__":
     run(
         args.sequence_dir, args.detection_file, args.output_file,
         args.min_confidence, args.nms_max_overlap, args.min_detection_height,
-        args.max_cosine_distance, args.nn_budget, args.display)
+        args.max_cosine_distance, args.nn_budget, args.display, args.save_images_dir)
