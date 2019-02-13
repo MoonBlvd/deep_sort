@@ -209,7 +209,8 @@ def run(sequence_dir, detection_file, output_file, min_confidence,
         visualizer = visualization.NoVisualization(seq_info)
     visualizer.run(frame_callback)
     
-
+    
+   
     # Store results.
     f = open(output_file, 'w')
     for row in results:
@@ -254,7 +255,7 @@ def run_multiple(sequence_dir, detection_dir, output_dir, min_confidence,
         raise ValueError("There is no folder in " + sequence_dir)
     for sequence_dir in all_sequences:
         video_name = sequence_dir.split('/')[-1]
-        output_file = os.path.join(output_dir, video_name + '.txt')
+        output_file = os.path.join(output_dir, video_name + '.npy')#'.txt')
         print(video_name)
         detection_file = os.path.join(detection_dir, video_name+'.npy')
         try:
@@ -312,11 +313,13 @@ def run_multiple(sequence_dir, detection_dir, output_dir, min_confidence,
         visualizer.run(frame_callback)
 
         # Store results.
-        f = open(output_file, 'w')
-        for row in results:
-            print('%d,%d,%.2f,%.2f,%.2f,%.2f,1,-1,-1,-1' % (
-                row[0], row[1], row[2], row[3], row[4], row[5]),file=f)
-        f.close()
+        np.save(output_file, np.array(results))
+
+        # f = open(output_file, 'w')
+        # for row in results:
+        #     print('%d,%d,%.2f,%.2f,%.2f,%.2f,1,-1,-1,-1' % (
+        #         row[0], row[1], row[2], row[3], row[4], row[5]),file=f)
+        # f.close()
         # shutdown the window
         if display:
             cv2.destroyWindow(visualizer.viewer._caption)
