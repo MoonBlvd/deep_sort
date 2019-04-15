@@ -71,7 +71,10 @@ class Track:
         self.hits = 1
         self.age = 1
         self.time_since_update = 0
-
+        self._class = None # newly added
+        self.all_past_classes = []
+        self.confidence = None # newly added
+        self.feature_to_save = feature # newly added
         self.state = TrackState.Tentative
         self.features = []
         if feature is not None:
@@ -138,6 +141,23 @@ class Track:
         self.mean, self.covariance = kf.update(
             self.mean, self.covariance, detection.to_xyah())
         self.features.append(detection.feature)
+        self.feature_to_save = detection.feature
+        
+        # Added April 15th 2019, track classes and confidences
+        self.all_past_classes.append(detection._class)
+        if self._class is None:
+            self._class = detection._class
+        else:
+            if self._class == detection._class:
+                self.confidence = detection.confidence
+                pass
+            else:
+                try:
+                    self._class = mode(self.all_past_classes) # assign the most frequent past class to it. the confidence in this case is at most 1-detection.confidence
+                    self.confidence = detection.confidence if self._class == detection._class else 1 - detection.confidence 
+                except:
+                    self._class = detection._class
+                    self.confidence = detection.confidence
 
         self.hits += 1
         self.time_since_update = 0

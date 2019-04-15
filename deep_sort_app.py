@@ -41,7 +41,8 @@ def gather_sequence_info(sequence_dir, detection_file):
         * max_frame_idx: Index of the last frame.
 
     """
-    image_dir = os.path.join(sequence_dir,'images')
+    #image_dir = os.path.join(sequence_dir,'images')
+    image_dir = os.path.join(sequence_dir)
     image_filenames = {
         int(os.path.splitext(f)[0]): os.path.join(image_dir, f)
         for f in os.listdir(image_dir)}
@@ -79,7 +80,7 @@ def gather_sequence_info(sequence_dir, detection_file):
     else:
         update_ms = None
 
-    feature_dim = detections.shape[1] - 10 if detections is not None else 0
+    feature_dim = detections.shape[1] - 8 if detections is not None else 0 # 10
     seq_info = {
         "sequence_name": os.path.basename(sequence_dir),
         "image_filenames": image_filenames,
@@ -120,10 +121,10 @@ def create_detections(detection_mat, frame_idx, min_height=0):
 
     detection_list = []
     for row in detection_mat[mask]:
-        bbox, confidence, feature = row[2:6], row[6], row[10:]
+        bbox, _class, confidence, feature = row[2:6], row[6], row[7], row[8:] #row[6]
         if bbox[3] < min_height:
             continue
-        detection_list.append(Detection(bbox, confidence, feature))
+        detection_list.append(Detection(bbox, _class, confidence, feature))
     return detection_list
 
 
@@ -302,8 +303,11 @@ def run_multiple(sequence_dir, detection_dir, output_dir, min_confidence,
                 if not track.is_confirmed() or track.time_since_update > 1:
                     continue
                 bbox = track.to_tlwh()
-                results.append([
-                    frame_idx, track.track_id, bbox[0], bbox[1], bbox[2], bbox[3]])
+                # print("track._class:",track._class)
+                # print("track.confidence:",track.confidence)
+                # print("track.feature_to_save:",track.feature_to_save.shape)
+                results.append(
+                    np.hstack([frame_idx, track.track_id, bbox[0], bbox[1], bbox[2], bbox[3], track._class, track.confidence, track.feature_to_save]))
 
         # Run tracker.
         if display:
