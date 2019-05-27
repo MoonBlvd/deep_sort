@@ -2,7 +2,7 @@
 import numpy as np
 import colorsys
 from .image_viewer import ImageViewer
-
+import time
 
 def create_unique_color_float(tag, hue_step=0.41):
     """Create a unique RGB color code for a given track id (tag).
@@ -99,6 +99,7 @@ class Visualization(object):
 
     def run(self, frame_callback):
         self.viewer.run(lambda: self._update_fun(frame_callback))
+        
 
     def _update_fun(self, frame_callback):
         if self.frame_idx > self.last_idx:
@@ -135,3 +136,4 @@ class Visualization(object):
             # self.viewer.gaussian(track.mean[:2], track.covariance[:2, :2],
             #                      label="%d" % track.track_id)
 #
+        # time.sleep(0.2)

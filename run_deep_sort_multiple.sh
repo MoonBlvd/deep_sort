@@ -1,9 +1,13 @@
 python deep_sort_app.py \
     --sequence_dir=/media/DATA/HEVI_dataset/frames \
-    --detection_dir=/media/DATA/HEVI_dataset/maskrcnn_detections \
-    --min_confidence=0.3 \
+    --detection_dir=/media/DATA/HEVI_dataset/maskrcnn_detections_bdd_clear \
+    --output_dir=/media/DATA/HEVI_dataset/deep_sort_bdd_may \
+    --max_age=10 \
+    --min_confidence=0.7 \
     --nms_max_overlap=0.3 \
-    --output_dir=/media/DATA/HEVI_dataset/deep_sort \
+    # --max_cosine_distance=0.7 \
+    #--max_iou_distance=0.9 \
+    # --display
 #python deep_sort_app.py \
 #    --sequence_dir=/media/DATA/VAD_datasets/taiwan_sa/testing/frames \
 #    --detection_dir=/media/DATA/VAD_datasets/taiwan_sa/testing/mask_rcnn_detections \

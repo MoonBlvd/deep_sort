@@ -121,7 +121,7 @@ def create_detections(detection_mat, frame_idx, min_height=0):
 
     detection_list = []
     for row in detection_mat[mask]:
-        bbox, _class, confidence, feature = row[2:6], row[6], row[7], row[8:] #row[6]
+        bbox, _class, confidence, feature = row[2:6], row[6], row[7], row[8:]
         if bbox[3] < min_height:
             continue
         detection_list.append(Detection(bbox, _class, confidence, feature))
@@ -129,7 +129,7 @@ def create_detections(detection_mat, frame_idx, min_height=0):
 
 
 def run(sequence_dir, detection_file, output_file, min_confidence,
-        nms_max_overlap, min_detection_height, max_cosine_distance,
+        nms_max_overlap, min_detection_height, max_cosine_distance,max_age,
         nn_budget, display, save_images_dir):
     """Run multi-target tracker on a particular sequence.
 
@@ -164,7 +164,7 @@ def run(sequence_dir, detection_file, output_file, min_confidence,
     seq_info = gather_sequence_info(sequence_dir, detection_file)
     metric = nn_matching.NearestNeighborDistanceMetric(
         "cosine", max_cosine_distance, nn_budget)
-    tracker = Tracker(metric)
+    tracker = Tracker(metric, max_age=max_age)
     results = []
 
     def frame_callback(vis, frame_idx):
@@ -219,7 +219,7 @@ def run(sequence_dir, detection_file, output_file, min_confidence,
             row[0], row[1], row[2], row[3], row[4], row[5]),file=f)
 
 def run_multiple(sequence_dir, detection_dir, output_dir, min_confidence,
-                nms_max_overlap, min_detection_height, max_cosine_distance,
+                nms_max_overlap, min_detection_height, max_cosine_distance, max_age,
                 nn_budget, display, save_images_dir):
     """Run multi-target tracker on a particular sequence.
 
@@ -267,11 +267,11 @@ def run_multiple(sequence_dir, detection_dir, output_dir, min_confidence,
         seq_info = gather_sequence_info(sequence_dir, detection_file)
         metric = nn_matching.NearestNeighborDistanceMetric(
             "cosine", max_cosine_distance, nn_budget)
-        tracker = Tracker(metric)
+        tracker = Tracker(metric, max_age=max_age)
         results = []
 
         def frame_callback(vis, frame_idx):
-            print("Processing frame %05d" % frame_idx)
+            # print("Processing frame %05d" % frame_idx)
 
             # Load image and generate detections.
             detections = create_detections(
@@ -359,6 +359,9 @@ def parse_args():
         "--max_cosine_distance", help="Gating threshold for cosine distance "
         "metric (object appearance).", type=float, default=0.2)
     parser.add_argument(
+        "--max_age", help="Gating threshold for object age "
+        "metric (number of age).", type=int, default=30)
+    parser.add_argument(
         "--nn_budget", help="Maximum size of the appearance descriptors "
         "gallery. If None, no budget is enforced.", type=int, default=None)
     parser.add_argument(
@@ -376,13 +379,12 @@ if __name__ == "__main__":
     if os.path.isdir(args.detection_dir):
         run_multiple(args.sequence_dir, args.detection_dir, args.output_dir,
                     args.min_confidence, args.nms_max_overlap, args.min_detection_height,
-                    args.max_cosine_distance, args.nn_budget, args.display, args.save_images_dir)
+                    args.max_cosine_distance, args.max_age, args.nn_budget, args.display, args.save_images_dir)
     else:
         try:
             run(args.sequence_dir, args.detection_dir, args.output_dir,
                 args.min_confidence, args.nms_max_overlap, args.min_detection_height,
-                args.max_cosine_distance, args.nn_budget, args.display, args.save_images_dir)
+                args.max_cosine_distance, args.max_age, args.nn_budget, args.display, args.save_images_dir)
         except:
             raise NameError(args.detection_dir + ' or ' + args.output_dir + ' is unknown!')
         
-

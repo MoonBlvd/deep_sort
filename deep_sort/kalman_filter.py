@@ -1,7 +1,7 @@
 # vim: expandtab:ts=4:sw=4
 import numpy as np
 import scipy.linalg
-
+import copy
 
 """
 Table for the 0.95 quantile of the chi-square distribution with N degrees of
@@ -181,6 +181,12 @@ class KalmanFilter(object):
         innovation = measurement - projected_mean
 
         new_mean = mean + np.dot(innovation, kalman_gain.T)
+        #NOTE: May 26, use the measurement if it matches with a prediction. 
+        # kalman_gain = np.vstack([np.eye(4), np.eye(4)]) 
+        # new_mean = copy.deepcopy(mean) #mean + np.dot(innovation, kalman_gain.T) 
+        # new_mean[:4] += innovation
+        
+        # new_mean[:4] = copy.deepcopy(measurement)  
         new_covariance = covariance - np.linalg.multi_dot((
             kalman_gain, projected_cov, kalman_gain.T))
         return new_mean, new_covariance
